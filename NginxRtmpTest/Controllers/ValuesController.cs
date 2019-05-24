@@ -1,5 +1,6 @@
 ﻿using log4net;
 using log4net.Config;
+using NginxRtmpTest.Tools;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -11,16 +12,12 @@ namespace NginxRtmpTest.Controllers
 {
     public class ValuesController : ApiController
     {
-        static FileInfo logCfg = new FileInfo(AppDomain.CurrentDomain.BaseDirectory + "log4net.config");       
-        
-       
-        [HttpGet]
+        static LoggerHelper loggerHelper = LoggerHelper.GetInstance();
+        [Route("api/Publish")]
         public IHttpActionResult Test(String user,String password,String endTime)
         {
-            XmlConfigurator.ConfigureAndWatch(logCfg);
-            ILog _log = LogManager.GetLogger(typeof(ValuesController));
             DateTime dt = new DateTime();
-            _log.Info($"rtmp推流访问时间{DateTime.Now}");
+            loggerHelper.Log.Info($"rtmp推流访问时间{DateTime.Now}");
             if (String.IsNullOrEmpty(user)||String.IsNullOrEmpty(password)||String.IsNullOrEmpty(endTime))
             {
                 return NotFound();
@@ -35,7 +32,13 @@ namespace NginxRtmpTest.Controllers
             }           
             return NotFound();
         }
-          
+        [Route("api/PublishDone")]
+        public async Task<IHttpActionResult> PublishDone()
+        {
+            var message =await Request.Content.ReadAsStringAsync();
+            loggerHelper.Log.Debug($"推流结束回调信息{message}");
+            return Ok();
+        }
         /// <summary>
         /// 设置ffmpeg.exe的路径
         /// </summary>
@@ -132,14 +135,11 @@ namespace NginxRtmpTest.Controllers
 
         static async Task RunMyProcessAsnyc(Task<String> Parameters)
         {
-            XmlConfigurator.ConfigureAndWatch(logCfg);
-            ILog _log = LogManager.GetLogger(typeof(ValuesController));
-            //
-           
+
             var p = new Process();                 
             p.StartInfo.FileName = FFmpegPath;
             p.StartInfo.Arguments =await Parameters;
-            _log.Info($"ffmpeg命令为：{p.StartInfo.Arguments}");
+            loggerHelper.Log.Info($"ffmpeg命令为：{p.StartInfo.Arguments}");
             //是否使用操作系统shell启动
             p.StartInfo.UseShellExecute = false;
             //不显示程序窗口
@@ -152,7 +152,7 @@ namespace NginxRtmpTest.Controllers
             p.OutputDataReceived += new DataReceivedEventHandler(Output);
             p.Start();
             //记录日志
-            _log.Info($"当前异步ffmpeg进程ID：{p.Id}");
+            loggerHelper.Log.Info($"当前异步ffmpeg进程ID：{p.Id}");
 
             p.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
             p.BeginErrorReadLine();//开始异步读取
@@ -163,10 +163,6 @@ namespace NginxRtmpTest.Controllers
         }
         static void  RunMyProcess(String parameters)
         {
-            XmlConfigurator.ConfigureAndWatch(logCfg);
-            ILog _log = LogManager.GetLogger(typeof(ValuesController));
-            //
-
             var p = new Process();
             if (pID != 0)
             {
@@ -176,7 +172,7 @@ namespace NginxRtmpTest.Controllers
 
             p.StartInfo.FileName = FFmpegPath;
             p.StartInfo.Arguments = parameters;
-            _log.Info($"ffmpeg命令为：{p.StartInfo.Arguments}");
+            loggerHelper.Log.Info($"ffmpeg命令为：{p.StartInfo.Arguments}");
             //是否使用操作系统shell启动
             p.StartInfo.UseShellExecute = false;
             //不显示程序窗口
@@ -189,7 +185,7 @@ namespace NginxRtmpTest.Controllers
             p.OutputDataReceived += new DataReceivedEventHandler(Output);
             p.Start();
             //记录日志
-            _log.Info($"当前同步ffmpeg进程ID：{p.Id}");
+            loggerHelper.Log.Info($"当前同步ffmpeg进程ID：{p.Id}");
 
             p.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
             p.BeginErrorReadLine();//开始异步读取
@@ -206,13 +202,11 @@ namespace NginxRtmpTest.Controllers
         }
         static void Output(object sendProcess, DataReceivedEventArgs output)
         {
-            XmlConfigurator.ConfigureAndWatch(logCfg);
-            ILog _log = LogManager.GetLogger(typeof(ValuesController));
             if (!String.IsNullOrEmpty(output.Data))
             {
                 //处理方法...
                 //Console.WriteLine(output.Data);
-                _log.Info(output.Data);
+                loggerHelper.Log.Info(output.Data);
             }
         }
     }
